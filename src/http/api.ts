@@ -85,6 +85,14 @@ import { getNullTerminatedString } from "../p2p/utils";
 import { rootHTTPLogger } from "../logging";
 
 type pThrottledFunction = <F extends AnyFunction>(function_: F) => ThrottledFunction<F>;
+/**
+ * Eufy's APIs use both the legacy application status code 0 and the HTTP-style
+ * status code 200 for successful responses. The Mega/v6 backend currently
+ * returns 200 for several endpoints, so both values must be accepted.
+ */
+export function isSuccessfulResponseCode(code: number): boolean {
+    return code === ResponseErrorCode.CODE_OK || code === 200;
+}
 
 export class HTTPApi extends TypedEmitter<HTTPApiEvents> {
   private static apiDomainBase = "https://extend.eufylife.com";
@@ -251,7 +259,7 @@ export class HTTPApi extends TypedEmitter<HTTPApiEvents> {
     });
 
     const result: ResultResponse = response.body as ResultResponse;
-    if (result.code == ResponseErrorCode.CODE_OK) {
+    if (isSuccessfulResponseCode(result.code)) {
       return `https://${result.data.domain}`;
     }
     throw new ApiBaseLoadError("Error identifying API base from cloud", {
@@ -558,7 +566,7 @@ export class HTTPApi extends TypedEmitter<HTTPApiEvents> {
         if (response.status == 200) {
           const result: ResultResponse = response.data;
           if (result.data !== undefined) {
-            if (result.code == ResponseErrorCode.CODE_OK) {
+            if (isSuccessfulResponseCode(result.code)) {
               this.loginCompleted(result.data);
             } else if (result.code == ResponseErrorCode.CODE_NEED_VERIFY_CODE) {
               this.loginVerifyCode(result.data);
@@ -673,7 +681,7 @@ export class HTTPApi extends TypedEmitter<HTTPApiEvents> {
     if (response != undefined) {
       if (response.status == 200) {
         const result: ResultResponse = response.data;
-        if (result.code == ResponseErrorCode.CODE_OK) {
+        if (isSuccessfulResponseCode(result.code)) {
           rootHTTPLogger.info(`Requested verification code for 2FA`);
           return true;
         } else {
@@ -703,7 +711,7 @@ export class HTTPApi extends TypedEmitter<HTTPApiEvents> {
         });
         if (response.status == 200) {
           const result: ResultResponse = response.data;
-          if (result.code == ResponseErrorCode.CODE_OK) {
+          if (isSuccessfulResponseCode(result.code)) {
             if (result.data && result.data.list) {
               return result.data.list;
             }
@@ -740,7 +748,7 @@ export class HTTPApi extends TypedEmitter<HTTPApiEvents> {
       rootHTTPLogger.debug("Add trust device - Response trust device", { verifyCode: verifyCode, data: response.data });
       if (response.status == 200) {
         const result: ResultResponse = response.data;
-        if (result.code == ResponseErrorCode.CODE_OK) {
+        if (isSuccessfulResponseCode(result.code)) {
           rootHTTPLogger.info(`2FA authentication successfully done. Device trusted.`);
           const trusted_devices = await this.listTrustDevice();
           trusted_devices.forEach((trusted_device: TrustDevice) => {
@@ -788,7 +796,7 @@ export class HTTPApi extends TypedEmitter<HTTPApiEvents> {
     if (response != undefined) {
       if (response.status == 200) {
         const result: ResultResponse = response.data;
-        if (result.code == 0) {
+        if (isSuccessfulResponseCode(result.code)) {
           if (result.data) {
             const stationList = this.decryptAPIData(result.data) as Array<StationListResponse>;
             rootHTTPLogger.debug("Decrypted station list data", stationList);
@@ -828,7 +836,7 @@ export class HTTPApi extends TypedEmitter<HTTPApiEvents> {
     if (response != undefined) {
       if (response.status == 200) {
         const result: ResultResponse = response.data;
-        if (result.code == 0) {
+        if (isSuccessfulResponseCode(result.code)) {
           if (result.data) {
             const deviceList = this.decryptAPIData(result.data) as Array<DeviceListResponse>;
             rootHTTPLogger.debug("Decrypted device list data: %s", JSON.stringify(deviceList, null, 2));
@@ -986,7 +994,7 @@ export class HTTPApi extends TypedEmitter<HTTPApiEvents> {
     if (response !== undefined) {
       if (response.status == 200) {
         const result: ResultResponse = response.data;
-        if (result.code == 0) {
+        if (isSuccessfulResponseCode(result.code)) {
           rootHTTPLogger.debug(`Check push token - Push token OK`);
           return true;
         } else {
@@ -1019,7 +1027,7 @@ export class HTTPApi extends TypedEmitter<HTTPApiEvents> {
     if (response !== undefined) {
       if (response.status == 200) {
         const result: ResultResponse = response.data;
-        if (result.code == 0) {
+        if (isSuccessfulResponseCode(result.code)) {
           rootHTTPLogger.debug(`Register push token - Push token registered successfully`);
           return true;
         } else {
@@ -1072,7 +1080,7 @@ export class HTTPApi extends TypedEmitter<HTTPApiEvents> {
       });
       if (response.status == 200) {
         const result: ResultResponse = response.data;
-        if (result.code == 0) {
+        if (isSuccessfulResponseCode(result.code)) {
           const dataresult = result.data;
           rootHTTPLogger.debug("Set parameter - New parameters set", { params: tmp_params, response: dataresult });
           return true;
@@ -1112,7 +1120,7 @@ export class HTTPApi extends TypedEmitter<HTTPApiEvents> {
     if (response !== undefined) {
       if (response.status == 200) {
         const result: ResultResponse = response.data;
-        if (result.code == ResponseErrorCode.CODE_OK) {
+        if (isSuccessfulResponseCode(result.code)) {
           if (result.data) {
             const ciphers: Ciphers = {};
             const decrypted = this.decryptAPIData(result.data);
@@ -1155,7 +1163,7 @@ export class HTTPApi extends TypedEmitter<HTTPApiEvents> {
         });
         if (response.status == 200) {
           const result: ResultResponse = response.data;
-          if (result.code == ResponseErrorCode.CODE_OK) {
+          if (isSuccessfulResponseCode(result.code)) {
             if (result.data) {
               const voices: Voices = {};
               result.data.forEach((voice: Voice) => {
@@ -1270,7 +1278,7 @@ export class HTTPApi extends TypedEmitter<HTTPApiEvents> {
       rootHTTPLogger.debug(`${functionName} - Response:`, response.data);
       if (response.status == 200) {
         const result: ResultResponse = response.data;
-        if (result.code == 0) {
+        if (isSuccessfulResponseCode(result.code)) {
           if (result.data) {
             const dataresult: Array<EventRecordResponse> = this.decryptAPIData(result.data);
             rootHTTPLogger.debug(`${functionName} - Decrypted data:`, dataresult);
@@ -1398,7 +1406,7 @@ export class HTTPApi extends TypedEmitter<HTTPApiEvents> {
     if (response !== undefined) {
       if (response.status == 200) {
         const result: ResultResponse = response.data;
-        if (result.code == ResponseErrorCode.CODE_OK) {
+        if (isSuccessfulResponseCode(result.code)) {
           if (result.data && typeof result.data === "string") {
             const invites: Invites = {};
             const decrypted = this.decryptAPIData(result.data);
@@ -1441,7 +1449,7 @@ export class HTTPApi extends TypedEmitter<HTTPApiEvents> {
     if (response !== undefined) {
       if (response.status == 200) {
         const result: ResultResponse = response.data;
-        if (result.code == ResponseErrorCode.CODE_OK) {
+        if (isSuccessfulResponseCode(result.code)) {
           return true;
         } else {
           rootHTTPLogger.error("Confirm invites - Response code not ok", {
@@ -1476,7 +1484,7 @@ export class HTTPApi extends TypedEmitter<HTTPApiEvents> {
           });
           if (response.status == 200) {
             const result: ResultResponse = response.data;
-            if (result.code == ResponseErrorCode.CODE_OK) {
+            if (isSuccessfulResponseCode(result.code)) {
               if (result.data) {
                 if (type === PublicKeyType.LOCK)
                   this.persistentData.device_public_keys[deviceSN] = result.data.public_key;
@@ -1555,7 +1563,7 @@ export class HTTPApi extends TypedEmitter<HTTPApiEvents> {
     if (response !== undefined) {
       if (response.status == 200) {
         const result: ResultResponse = response.data;
-        if (result.code == ResponseErrorCode.CODE_OK) {
+        if (isSuccessfulResponseCode(result.code)) {
           if (result.data) {
             const entries: Array<SensorHistoryEntry> = result.data;
             return entries;
@@ -1592,7 +1600,7 @@ export class HTTPApi extends TypedEmitter<HTTPApiEvents> {
     if (response !== undefined) {
       if (response.status == 200) {
         const result: ResultResponse = response.data;
-        if (result.code == ResponseErrorCode.CODE_OK) {
+        if (isSuccessfulResponseCode(result.code)) {
           if (result.data) {
             const houseDetail = this.decryptAPIData(result.data) as HouseDetail;
             rootHTTPLogger.debug("Get house detail - Decrypted house detail data", { details: houseDetail });
@@ -1627,7 +1635,7 @@ export class HTTPApi extends TypedEmitter<HTTPApiEvents> {
     if (response !== undefined) {
       if (response.status == 200) {
         const result: ResultResponse = response.data;
-        if (result.code == ResponseErrorCode.CODE_OK) {
+        if (isSuccessfulResponseCode(result.code)) {
           if (result.data) {
             rootHTTPLogger.debug("Get house list - houses", { houses: result.data });
             return result.data as Array<HouseListResponse>;
@@ -1660,7 +1668,7 @@ export class HTTPApi extends TypedEmitter<HTTPApiEvents> {
     if (response !== undefined) {
       if (response.status == 200) {
         const result: ResultResponse = response.data;
-        if (result.code == ResponseErrorCode.CODE_OK) {
+        if (isSuccessfulResponseCode(result.code)) {
           if (result.data) {
             const houseInviteList = result.data as Array<HouseInviteListResponse>;
             rootHTTPLogger.debug("Get house invite list - House invite list data", houseInviteList);
@@ -1699,7 +1707,7 @@ export class HTTPApi extends TypedEmitter<HTTPApiEvents> {
     if (response !== undefined) {
       if (response.status == 200) {
         const result: ResultResponse = response.data;
-        if (result.code == ResponseErrorCode.CODE_OK) {
+        if (isSuccessfulResponseCode(result.code)) {
           return true;
         } else {
           rootHTTPLogger.error("Confirm house invite - Response code not ok", {
@@ -1734,7 +1742,7 @@ export class HTTPApi extends TypedEmitter<HTTPApiEvents> {
     if (response !== undefined) {
       if (response.status == 200) {
         const result: ResultResponse = response.data;
-        if (result.code == ResponseErrorCode.CODE_OK) {
+        if (isSuccessfulResponseCode(result.code)) {
           return true;
         } else {
           rootHTTPLogger.error("Send house invite - Response code not ok", {
@@ -1770,7 +1778,7 @@ export class HTTPApi extends TypedEmitter<HTTPApiEvents> {
       });
       if (response.status == 200) {
         const result: ResultResponse = response.data;
-        if (result.code == ResponseErrorCode.CODE_OK) {
+        if (isSuccessfulResponseCode(result.code)) {
           if (result.data) {
             const profile = this.decryptAPIData(result.data) as PassportProfileResponse;
             rootHTTPLogger.debug("Get passport profile - Decrypted passport profile data", { profile: profile });
@@ -1812,7 +1820,7 @@ export class HTTPApi extends TypedEmitter<HTTPApiEvents> {
     if (response !== undefined) {
       if (response.status == 200) {
         const result: ResultResponse = response.data;
-        if (result.code == ResponseErrorCode.CODE_OK) {
+        if (isSuccessfulResponseCode(result.code)) {
           if (result.data) return result.data as AddUserResponse;
         } else {
           rootHTTPLogger.error("Add user - Response code not ok", {
@@ -1850,7 +1858,7 @@ export class HTTPApi extends TypedEmitter<HTTPApiEvents> {
     if (response !== undefined) {
       if (response.status == 200) {
         const result: ResultResponse = response.data;
-        if (result.code == ResponseErrorCode.CODE_OK) {
+        if (isSuccessfulResponseCode(result.code)) {
           return true;
         } else {
           rootHTTPLogger.error("Delete user - Response code not ok", {
@@ -1884,7 +1892,7 @@ export class HTTPApi extends TypedEmitter<HTTPApiEvents> {
       });
       if (response.status == 200) {
         const result: ResultResponse = response.data;
-        if (result.code == ResponseErrorCode.CODE_OK) {
+        if (isSuccessfulResponseCode(result.code)) {
           if (result.data) {
             const usersResponse = result.data as UsersResponse;
             return usersResponse.user_list;
@@ -1962,7 +1970,7 @@ export class HTTPApi extends TypedEmitter<HTTPApiEvents> {
       if (response !== undefined) {
         if (response.status == 200) {
           const result: ResultResponse = response.data;
-          if (result.code == ResponseErrorCode.CODE_OK) {
+          if (isSuccessfulResponseCode(result.code)) {
             return true;
           } else {
             rootHTTPLogger.error("Update user - Response code not ok", {
@@ -2064,7 +2072,7 @@ export class HTTPApi extends TypedEmitter<HTTPApiEvents> {
     if (response !== undefined) {
       if (response.status == 200) {
         const result: ResultResponse = response.data;
-        if (result.code == ResponseErrorCode.CODE_OK) {
+        if (isSuccessfulResponseCode(result.code)) {
           return true;
         } else {
           rootHTTPLogger.error("Add user - Response code not ok", {
